@@ -1,12 +1,14 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MainLayout } from '../components/layout/MainLayout';
+
+import { DevDashboard } from '../features/developer/DevDashboard';
+
 import { SystemOverview } from '../features/admin/SystemOverview';
 // import { UsersManagement } from '../features/admin/pages/UsersManagement';
 // import { AllProjects } from '../features/admin/pages/AllProjects';
 // import { AuditLogs } from '../features/admin/pages/AuditLogs';
 
 // Mock Pages (Bạn sẽ tạo các file thật trong thư mục features sau)
-const DevDashboard = () => <div>Dev Dashboard Content</div>;
 const MyProjects = () => <div>My Projects Content</div>;
 const UsersManagement = () => <div>Users Management Content</div>;
 const AllProjects = () => <div>All Projects Content</div>;
