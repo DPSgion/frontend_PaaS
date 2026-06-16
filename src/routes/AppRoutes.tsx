@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MainLayout } from '../components/layout/MainLayout';
 
+import { UserProfile } from '../features/profile/UserProfile';
+
 import { DevDashboard } from '../features/developer/DevDashboard';
 import { MyProjects } from '../features/developer/MyProjects';
 import { DevProjectDetail } from '../features/developer/DevProjectDetail';
@@ -22,7 +24,9 @@ export const AppRoutes = () => {
           
           {/* Đường dẫn động này bắt buộc phải giữ nguyên để trang chi tiết chạy được */}
           <Route path="/project/:projectId/env/:envId" element={<DevProjectDetail />} />
-          
+
+          {/* Profile */}
+          <Route path="/profile" element={<UserProfile />} />
           {/* Admin Routes (Đã cập nhật theo Sidebar mới của bạn) */}
           <Route path="/admin/overview" element={<SystemOverview />} />
           <Route path="/admin/users-management" element={<UsersManagement />} />

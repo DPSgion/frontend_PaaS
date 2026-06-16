@@ -1,6 +1,7 @@
 // src/components/layout/Header.tsx
 import { FiSearch, FiBell, FiChevronDown } from 'react-icons/fi'; // Cài: npm install react-icons
 import { NotificationDropdown } from '../ui/NotificationDropdown';
+import { ProfileDropdown } from '../ui/ProfileDropdown';
 
 export const Header = () => {
   return (
@@ -24,24 +25,9 @@ export const Header = () => {
       </div>
 
       {/* Bên phải: Actions & Profile */}
-      {/* Bên phải: Actions & Profile */}
       <div className="flex items-center gap-5">
-
-        {/* Đã thay nút chuông cứng bằng Dropdown Component */}
         <NotificationDropdown />
-
-        <div className="flex items-center gap-3 cursor-pointer group p-1.5 rounded-lg hover:bg-gray-50">
-          <img
-            src="https://api.dicebear.com/8.x/notionists/svg?seed=Felix"
-            alt="avatar"
-            className="w-9 h-9 rounded-full border border-gray-200"
-          />
-          <div>
-            <div className="font-semibold text-sm text-gray-800">Admin User</div>
-            <div className="text-xs text-gray-500">admin@paas.dev</div>
-          </div>
-          <FiChevronDown className="text-gray-400 group-hover:text-gray-600" />
-        </div>
+        <ProfileDropdown />
       </div>
     </header>
   );
