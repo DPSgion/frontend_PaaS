@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MainLayout } from '../components/layout/MainLayout';
+import { ProtectedRoute } from '../components/layout/ProtectedRoute';
+import { PublicRoute } from '../components/layout/PublicRoute';
+import { Login } from '../features/auth/Login';
 
 import { UserProfile } from '../features/profile/UserProfile';
 
@@ -11,28 +14,41 @@ import { SystemOverview } from '../features/admin/SystemOverview';
 import { UsersManagement } from '../features/admin/UsersManagement';
 import { AuditLogs } from '../features/admin/AuditLogs';
 import { AllProjects } from '../features/admin/AllProjects';
-// Mock Pages
 
 export const AppRoutes = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<MainLayout />}>
-          {/* Personal Space Routes */}
-          <Route path="/" element={<DevDashboard />} />
-          <Route path="/my-projects" element={<MyProjects />} />
-          
-          {/* Đường dẫn động này bắt buộc phải giữ nguyên để trang chi tiết chạy được */}
-          <Route path="/project/:projectId/env/:envId" element={<DevProjectDetail />} />
-
-          {/* Profile */}
-          <Route path="/profile" element={<UserProfile />} />
-          {/* Admin Routes (Đã cập nhật theo Sidebar mới của bạn) */}
-          <Route path="/admin/overview" element={<SystemOverview />} />
-          <Route path="/admin/users-management" element={<UsersManagement />} />
-          <Route path="/admin/all-projects" element={<AllProjects />} />
-          <Route path="/admin/audit-logs" element={<AuditLogs />} />
+        
+        {/* ========================================================= */}
+        {/* Public Routes */}
+        {/* ========================================================= */}
+        <Route element={<PublicRoute />}>
+          <Route path="/login" element={<Login />} />
         </Route>
+
+        {/* ========================================================= */}
+        {/* Signed-in Routes */}
+        {/* ========================================================= */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<MainLayout />}>
+            
+            {/* Personal Space Routes */}
+            <Route path="/" element={<DevDashboard />} />
+            <Route path="/my-projects" element={<MyProjects />} />
+            <Route path="/project/:projectId/env/:envId" element={<DevProjectDetail />} />
+
+            {/* Profile */}
+            <Route path="/profile" element={<UserProfile />} />
+
+            {/* Admin Routes */}
+            <Route path="/admin/overview" element={<SystemOverview />} />
+            <Route path="/admin/users-management" element={<UsersManagement />} />
+            <Route path="/admin/all-projects" element={<AllProjects />} />
+            <Route path="/admin/audit-logs" element={<AuditLogs />} />
+          </Route>
+        </Route>
+
       </Routes>
     </BrowserRouter>
   );
