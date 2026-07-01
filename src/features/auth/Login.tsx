@@ -1,7 +1,7 @@
-// src/features/auth/Login.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiLock, FiUser, FiArrowRight } from 'react-icons/fi';
+import { authApi } from './api/authApi';
 
 export const Login = () => {
   const navigate = useNavigate();
@@ -15,26 +15,25 @@ export const Login = () => {
     setError(''); // Xóa lỗi khi người dùng gõ lại
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Giả lập độ trễ mạng 0.5s cho có cảm giác hệ thống đang xử lý
-    setTimeout(() => {
-      if (credentials.username === '123' && credentials.password === '123') {
-        // Cấp phát token giả và lưu vào Local Storage
-        localStorage.setItem('paas_token', 'mock_jwt_token_12345');
-        navigate('/'); // Chuyển hướng vào trang chủ hệ thống
-      } else {
-        setError('Invalid username or password. System access denied.');
-      }
+    try {
+      const userData = await authApi.login(credentials);
+
+      localStorage.setItem('paas_user', JSON.stringify(userData));
+      navigate('/');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Authentication failed. Please check your credentials.');
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4 relative overflow-hidden">
-      
+
       {/* Background Effects */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[100px] pointer-events-none"></div>
@@ -52,13 +51,13 @@ export const Login = () => {
         {/* Login Form (Glassmorphism effect) */}
         <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleLogin} className="space-y-6">
-            
+
             <div>
               <label className="block text-xs font-mono text-gray-400 mb-2 uppercase tracking-wider">Username</label>
               <div className="relative">
                 <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   name="username"
                   value={credentials.username}
                   onChange={handleInputChange}
@@ -73,8 +72,8 @@ export const Login = () => {
               <label className="block text-xs font-mono text-gray-400 mb-2 uppercase tracking-wider">Password</label>
               <div className="relative">
                 <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   name="password"
                   value={credentials.password}
                   onChange={handleInputChange}
@@ -90,8 +89,8 @@ export const Login = () => {
               </div>
             )}
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isLoading || !credentials.username || !credentials.password}
               className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg shadow-indigo-600/20"
             >
