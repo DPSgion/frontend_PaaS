@@ -12,7 +12,7 @@ import { DevProjectDetail } from '../features/developer/DevProjectDetail';
 
 import { SystemOverview } from '../features/admin/SystemOverview';
 import { UsersManagement } from '../features/admin/UsersManagement';
-import { AuditLogs } from '../features/admin/AuditLogs';
+import { AuditLogManagement } from '../features/admin/AuditLogs';
 import { AllProjects } from '../features/admin/AllProjects';
 
 export const AppRoutes = () => {
@@ -45,7 +45,7 @@ export const AppRoutes = () => {
             <Route path="/admin/overview" element={<SystemOverview />} />
             <Route path="/admin/users-management" element={<UsersManagement />} />
             <Route path="/admin/all-projects" element={<AllProjects />} />
-            <Route path="/admin/audit-logs" element={<AuditLogs />} />
+            <Route path="/admin/audit-logs" element={<AuditLogManagement />} />
           </Route>
         </Route>
 

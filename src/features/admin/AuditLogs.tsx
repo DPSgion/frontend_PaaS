@@ -1,202 +1,247 @@
-// src/features/admin/AuditLogs.tsx
-import { useState } from 'react';
-import { FiSearch } from 'react-icons/fi';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { FiSearch, FiCalendar, FiFilter } from 'react-icons/fi';
+import { auditLogApi, type AuditLog } from './api/auditLogApi';
 
-// ============================================================================
-// MOCK DATA & TYPES
-// ============================================================================
-type ActionType = 'BAN_USER' | 'DELETE_PROJECT' | 'STOP_CONTAINER' | 'UPDATE_ENV' | 'CREATE_ADMIN' | 'EDIT_ROLE';
-
-interface AuditLog {
-    id: string;
-    timestamp: string;
-    actor: string;
-    actionType: ActionType;
-    target: {
-        type: 'project' | 'user' | 'system';
-        id: string;
-        name: string;
-        branch?: string; // Chỉ dùng cho project
-    };
-    description: string;
-}
-
-const mockLogs: AuditLog[] = [
-    {
-        id: 'log1',
-        timestamp: '2026-06-16 10:45:12',
-        actor: 'phuong (SYSTEM_ADMIN)',
-        actionType: 'STOP_CONTAINER',
-        target: { type: 'project', id: 'proj_1', name: 'Cupzone Backend', branch: 'main' },
-        description: 'Force stopped container due to high CPU usage.',
-    },
-    {
-        id: 'log2',
-        timestamp: '2026-06-16 09:12:00',
-        actor: 'khoa (ADMIN)',
-        actionType: 'BAN_USER',
-        target: { type: 'user', id: 'u3', name: 'dev_01' },
-        description: 'Banned user for violating resource limits.',
-    },
-    {
-        id: 'log3',
-        timestamp: '2026-06-15 16:30:22',
-        actor: 'phuong (SYSTEM_ADMIN)',
-        actionType: 'EDIT_ROLE',
-        target: { type: 'user', id: 'u2', name: 'khoa' },
-        description: 'Changed role from DEVELOPER to ADMIN.',
-    },
-    {
-        id: 'log4',
-        timestamp: '2026-06-15 14:00:05',
-        actor: 'Sinh vien (DEVELOPER)',
-        actionType: 'DELETE_PROJECT',
-        target: { type: 'project', id: 'proj_2', name: 'Test-App-01', branch: 'dev' },
-        description: 'Deleted project due to inactivity.',
-    },
+const ACTION_TYPES = [
+  'CREATE_USER', 'UPDATE_USER', 'SOFT_DELETE_USER', 'RESET_PASSWORD', 'CHANGE_PASSWORD', 
+  'BAN_USER', 'UNBAN_USER', 'GRANT_ADMIN', 'REVOKE_ADMIN', 
+//   'CREATE_PROJECT', 'DELETE_PROJECT', 'FORCE_STOP', 'UPDATE_ENV', 'MAP_DOMAIN'
 ];
 
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
-export const AuditLogs = () => {
-    // TODO 1: Gắn API fetch danh sách Audit Logs. 
-    // Cần bắt sự kiện onChange của các bộ lọc (User, Action Type, Date Range) và truyền tham số lên API cùng với currentPage để phân trang thực tế.
-    const [currentPage, setCurrentPage] = useState(1);
-    const totalPages = 5; // TODO: Lấy totalPages từ API trả về
-    const pageSize = 10;
+export const AuditLogManagement = () => {
+  // States chứa dữ liệu
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-    const formatActionType = (action: ActionType) => {
-        return action.replace('_', ' ');
+  // States lọc & tìm kiếm
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [actionFilter, setActionFilter] = useState('ALL');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
+  // States phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const pageSize = 10;
+
+  // Xử lý Debounce cho ô search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setCurrentPage(1); // Ép về trang 1 khi đổi từ khóa
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Xử lý Reset trang khi đổi các Filter khác
+  const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
+    setter(value);
+    setCurrentPage(1);
+  };
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      setIsLoading(true);
+      try {
+        // Biến hình YYYY-MM-DD thành DD/MM/YYYY trước khi gửi
+        const formattedFromDate = fromDate ? fromDate.split('-').reverse().join('/') : undefined;
+        const formattedToDate = toDate ? toDate.split('-').reverse().join('/') : undefined;
+
+        const data = await auditLogApi.getLogs(
+          currentPage - 1,
+          pageSize,
+          debouncedSearch,
+          actionFilter,
+          formattedFromDate,
+          formattedToDate
+        );
+        
+        setLogs(data.content);
+        setTotalPages(data.totalPages === 0 ? 1 : data.totalPages);
+        setTotalElements(data.totalElements);
+      } catch (error: any) {
+        // Hứng lỗi trực tiếp từ Backend để dễ debug
+        const errorMessage = error.response?.data?.message || error.response?.data || "Không thể tải dữ liệu Audit Log lúc này.";
+        console.error("Failed to fetch audit logs", error);
+        window.alert(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    return (
-        <div className="max-w-7xl mx-auto pb-12 space-y-6">
-            {/* 1. Header */}
-            <div>
-                <h2 className="text-2xl font-bold text-gray-900">Audit Logs</h2>
-                <p className="text-sm text-gray-500 mt-1">Truy vết chi tiết các thao tác trên hệ thống.</p>
-            </div>
+    fetchLogs();
+  }, [currentPage, debouncedSearch, actionFilter, fromDate, toDate]);
 
-            {/* 2. Filters */}
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col lg:flex-row gap-5 items-end">
-                {/* User Search */}
-                <div className="w-full lg:w-1/3">
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">User</label>
-                    <div className="relative">
-                        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Find by name, email, username..."
-                            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                        />
-                    </div>
-                </div>
+  // Hàm bôi màu cho Action Badge
+  const getActionBadgeClass = (action: string) => {
+    const dangerActions = ['SOFT_DELETE_USER', 'BAN_USER', 'REVOKE_ADMIN', 'DELETE_PROJECT', 'FORCE_STOP'];
+    const successActions = ['CREATE_USER', 'UNBAN_USER', 'GRANT_ADMIN', 'CREATE_PROJECT'];
+    
+    if (dangerActions.includes(action)) return 'bg-red-50 text-red-700 border-red-200';
+    if (successActions.includes(action)) return 'bg-green-50 text-green-700 border-green-200';
+    return 'bg-blue-50 text-blue-700 border-blue-200'; // Các action còn lại (Update/Change)
+  };
 
-                {/* Action Type */}
-                <div className="w-full lg:w-1/4">
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Action Type</label>
-                    <select className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white cursor-pointer">
-                        <option value="ALL">ALL</option>
-                        <option value="BAN_USER">Ban user</option>
-                        <option value="DELETE_PROJECT">Delete project</option>
-                        <option value="STOP_CONTAINER">Stop container</option>
-                        <option value="UPDATE_ENV">Update env</option>
-                        <option value="CREATE_ADMIN">Create admin</option>
-                        <option value="EDIT_ROLE">Edit role</option>
-                    </select>
-                </div>
+  const formatTimestamp = (timeStr: string) => {
+    if (!timeStr) return '';
+    const [datePart, timePart] = timeStr.split(' ');
+    if (!datePart) return timeStr;
+    
+    const [year, month, day] = datePart.split('-');
+    return `${day}/${month}/${year} ${timePart || ''}`.trim();
+  };
 
-                {/* Date Range */}
-                <div className="w-full lg:w-[40%] flex gap-3 items-end">
-                    <div className="flex-1">
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">From Date</label>
-                        <input
-                            type="date"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
-                        />
-                    </div>
-                    <span className="mb-2 text-gray-400 font-medium">-</span>
-                    <div className="flex-1">
-                        <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">To Date</label>
-                        <input
-                            type="date"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* 3. Table */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-600">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
-                            <tr>
-                                <th className="px-6 py-4">Timestamp</th>
-                                <th className="px-6 py-4">Actor</th>
-                                <th className="px-6 py-4">Action Type</th>
-                                <th className="px-6 py-4">Target</th>
-                                <th className="px-6 py-4">Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {mockLogs.map((log) => (
-                                <tr key={log.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-mono text-xs text-gray-500 whitespace-nowrap">{log.timestamp}</td>
-                                    <td className="px-6 py-4 font-medium text-gray-900">{log.actor}</td>
-                                    <td className="px-6 py-4">
-                                        <span className="bg-gray-100 text-gray-700 border border-gray-200 px-2.5 py-1 rounded-md text-xs font-semibold uppercase">
-                                            {formatActionType(log.actionType)}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {/* Phân loại render Target */}
-                                        {log.target.type === 'project' ? (
-                                            // TODO 2: Đảm bảo route "/admin/projects/:projectId" khớp với định tuyến thực tế của trang Admin_ShowProjectsDetail trong AppRoutes
-                                            <Link to={`/admin/projects/${log.target.id}`} className="text-indigo-600 hover:text-indigo-800 font-medium flex flex-col w-fit">
-                                                <span className="hover:underline">{log.target.name}</span>
-                                                <span className="text-xs text-gray-500 font-mono no-underline">({log.target.branch})</span>
-                                            </Link>
-                                        ) : (
-                                            <span className="text-gray-700 font-medium">User: {log.target.name}</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">{log.description}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* 4. Pagination */}
-                <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center text-sm font-medium">
-                    <div className="text-gray-500">
-                        Hiển thị <span className="font-bold text-gray-700">{mockLogs.length}</span> / {pageSize} bản ghi
-                    </div>
-
-                    <div className="flex items-center gap-4 text-gray-600">
-                        <button
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
-                            className={`transition-colors ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'cursor-pointer hover:text-indigo-600'}`}
-                        >
-                            &lt; Trước
-                        </button>
-                        <span className="bg-white border border-gray-300 px-3 py-1 rounded-md">
-                            Trang {currentPage} / {totalPages}
-                        </span>
-                        <button
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
-                            className={`transition-colors ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'cursor-pointer hover:text-indigo-600'}`}
-                        >
-                            Sau &gt;
-                        </button>
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="max-w-7xl mx-auto pb-12 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      
+      {/* 1. Header & Bộ lọc */}
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">System Audit Logs</h2>
+          <p className="text-sm text-gray-500 mt-1">Giám sát các thao tác quan trọng trên hệ thống</p>
         </div>
-    );
+
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Ô Tìm kiếm Actor */}
+          <div className="relative flex-1 min-w-[300px] md:w-80">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Search by actor..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+            />
+          </div>
+
+          {/* Lọc theo Action Type */}
+          <div className="relative">
+            <FiFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <select 
+              value={actionFilter}
+              onChange={(e) => handleFilterChange(setActionFilter, e.target.value)}
+              className="pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer bg-white"
+            >
+              <option value="ALL">All Actions</option>
+              {ACTION_TYPES.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Lọc Từ ngày - Đến ngày */}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <input 
+                type="date" 
+                value={fromDate}
+                onChange={(e) => handleFilterChange(setFromDate, e.target.value)}
+                className="pl-3 pr-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none text-gray-600"
+              />
+            </div>
+            <span className="text-gray-400">-</span>
+            <div className="relative">
+              <input 
+                type="date" 
+                value={toDate}
+                onChange={(e) => handleFilterChange(setToDate, e.target.value)}
+                className="pl-3 pr-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none text-gray-600"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Bảng dữ liệu */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[400px] flex flex-col">
+        <div className="overflow-x-auto flex-1">
+          <table className="w-full text-sm text-left text-gray-600">
+            <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4">TIMESTAMP</th>
+                <th className="px-6 py-4">ACTOR</th>
+                <th className="px-6 py-4">ACTION</th>
+                <th className="px-6 py-4">TARGET</th>
+                <th className="px-6 py-4 w-1/3">DESCRIPTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-3"></div>
+                      <p>Loading logs...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : logs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                    Không tìm thấy bản ghi Audit Log nào.
+                  </td>
+                </tr>
+              ) : (
+                logs.map((log, index) => (
+                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 font-mono text-xs text-gray-500 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <FiCalendar className="text-gray-400" />
+                        {formatTimestamp(log.timestamp)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-semibold text-gray-900">
+                      {log.actor}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`font-mono text-[11px] px-2.5 py-1 rounded-md border font-semibold ${getActionBadgeClass(log.actionType)}`}>
+                        {log.actionType}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-gray-800">
+                      {log.target}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 text-xs leading-relaxed">
+                      {log.description}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 3. Phân trang */}
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center text-sm font-medium">
+          <div className="text-gray-500">
+            Hiển thị <span className="font-bold text-gray-700">{logs.length}</span> / {totalElements} logs
+          </div>
+          
+          <div className="flex items-center gap-4 text-gray-600">
+            <button 
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1 || isLoading}
+              className={`transition-colors ${currentPage === 1 || isLoading ? 'text-gray-400 cursor-not-allowed' : 'cursor-pointer hover:text-indigo-600'}`}
+            >
+              &lt; Trước
+            </button>
+            
+            <span className="bg-white border border-gray-300 px-3 py-1 rounded-md">
+              Trang {currentPage} / {totalPages}
+            </span>
+            
+            <button 
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || isLoading}
+              className={`transition-colors ${currentPage === totalPages || isLoading ? 'text-gray-400 cursor-not-allowed' : 'cursor-pointer hover:text-indigo-600'}`}
+            >
+              Tiếp &gt;
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
